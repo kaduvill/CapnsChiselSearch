@@ -150,11 +150,18 @@ public abstract class GuiChiselMixin extends GuiContainer {
         }
     }
 
-    @Inject(method = "drawSlot", at = @At("TAIL"), remap = true)
-    private void capnschiselsearch$drawSlot(Slot slot, CallbackInfo ci) {
-        capnschiselsearch$drawSearchOverlay(slot);
+    @Inject(method = "drawSlot", at = @At("HEAD"), cancellable = true, remap = true)
+    private void capnschiselsearch$hideFilteredSlot(Slot slot, CallbackInfo ci) {
+        if (capnschiselsearch$isFilteredOut(slot)) {
+            drawRect(slot.xPos, slot.yPos, slot.xPos + 16, slot.yPos + 16, 0x66000000);
+            ci.cancel();
+        }
     }
 
+    @Inject(method = "drawSlot", at = @At("TAIL"), remap = true)
+    private void capnschiselsearch$highlightMatchingSlot(Slot slot, CallbackInfo ci) {
+        capnschiselsearch$drawSearchOverlay(slot);
+    }
     private boolean capnschiselsearch$isCtrlDown() {
         return Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
     }
@@ -284,18 +291,28 @@ public abstract class GuiChiselMixin extends GuiContainer {
             return;
         }
 
+        if (!capnschiselsearch$matchesSearch(slot.getStack())) {
+            return;
+        }
+
         int x = slot.xPos;
         int y = slot.yPos;
+        int color = 0xCC55FF55;
 
-        if (capnschiselsearch$matchesSearch(slot.getStack())) {
-            int color = 0xCC55FF55;
+        drawRect(x - 1, y - 1, x + 17, y, color);
+        drawRect(x - 1, y + 16, x + 17, y + 17, color);
+        drawRect(x - 1, y - 1, x, y + 17, color);
+        drawRect(x + 16, y - 1, x + 17, y + 17, color);
+    }
 
-            drawRect(x - 1, y - 1, x + 17, y, color);
-            drawRect(x - 1, y + 16, x + 17, y + 17, color);
-            drawRect(x - 1, y - 1, x, y + 17, color);
-            drawRect(x + 16, y - 1, x + 17, y + 17, color);
-        } else {
-            drawRect(x, y, x + 16, y + 16, 0xAA000000);
+    @Override
+    protected void renderToolTip(ItemStack stack, int x, int y) {
+        Slot slot = this.getSlotAtPosition(x, y);
+
+        if (capnschiselsearch$isFilteredOut(slot)) {
+            return;
         }
+
+        super.renderToolTip(stack, x, y);
     }
 }
