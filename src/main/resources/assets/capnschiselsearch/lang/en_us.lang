@@ -2,10 +2,10 @@ gui.capnschiselsearch.search.placeholder=Search...
 
 gui.capnschiselsearch.tooltip.title=Chisel Search
 gui.capnschiselsearch.tooltip.plain.operator=plain text
-gui.capnschiselsearch.tooltip.plain.description=- name + variant line
+gui.capnschiselsearch.tooltip.plain.description= - name + variant line
 gui.capnschiselsearch.tooltip.mod.operator=@mod
-gui.capnschiselsearch.tooltip.mod.description=- mod id / mod name
+gui.capnschiselsearch.tooltip.mod.description= - mod id / mod name
 gui.capnschiselsearch.tooltip.tooltip.operator=#text
-gui.capnschiselsearch.tooltip.tooltip.description=- full tooltip
+gui.capnschiselsearch.tooltip.tooltip.description= - full tooltip
 gui.capnschiselsearch.tooltip.registry.operator=&id
-gui.capnschiselsearch.tooltip.registry.description=- registry id
+gui.capnschiselsearch.tooltip.registry.description= - registry id
