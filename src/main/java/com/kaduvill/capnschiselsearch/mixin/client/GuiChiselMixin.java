@@ -1,5 +1,6 @@
 package com.kaduvill.capnschiselsearch.mixin.client;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.io.IOException;
 import java.util.List;
@@ -7,11 +8,14 @@ import java.util.List;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
+import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.common.ModContainer;
 
 import org.lwjgl.input.Keyboard;
 
@@ -29,7 +33,7 @@ public abstract class GuiChiselMixin extends GuiContainer {
     private static final int SEARCH_FIELD_ID = 9000;
     private static final int SEARCH_FIELD_HEIGHT = 12;
 
-    private static String capnschiselsearch$lastSearchText = "";
+    private String capnschiselsearch$lastSearchText = "";
 
     @Shadow(remap = false)
     public ContainerChisel container;
@@ -66,10 +70,6 @@ public abstract class GuiChiselMixin extends GuiContainer {
     @Inject(method = "onGuiClosed", at = @At("HEAD"), remap = true)
     private void capnschiselsearch$onGuiClosed(CallbackInfo ci) {
         Keyboard.enableRepeatEvents(false);
-
-        if (this.capnschiselsearch$searchField != null) {
-            capnschiselsearch$lastSearchText = this.capnschiselsearch$searchField.getText();
-        }
     }
 
     @Inject(method = "drawScreen", at = @At("TAIL"), remap = true)
@@ -77,17 +77,35 @@ public abstract class GuiChiselMixin extends GuiContainer {
         if (this.capnschiselsearch$searchField == null) {
             return;
         }
-
         this.capnschiselsearch$searchField.drawTextBox();
 
         if (this.capnschiselsearch$searchField.getText().isEmpty() && !this.capnschiselsearch$searchField.isFocused()) {
             this.fontRenderer.drawString(
-                    "Search...",
+                    I18n.format("gui.capnschiselsearch.search.placeholder"),
                     this.capnschiselsearch$searchField.x + 4,
                     this.capnschiselsearch$searchField.y + 3,
                     0x707070
             );
         }
+        if (capnschiselsearch$isMouseOverSearchField(mouseX, mouseY)) {
+            capnschiselsearch$drawSearchHelpTooltip(mouseX, mouseY);
+        }
+    }
+
+    private void capnschiselsearch$drawSearchHelpTooltip(int mouseX, int mouseY) {
+        List<String> tooltip = Arrays.asList(
+                TextFormatting.YELLOW + I18n.format("gui.capnschiselsearch.tooltip.title"),
+                TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.plain.operator")
+                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.plain.description"),
+                TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.mod.operator")
+                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.mod.description"),
+                TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.tooltip.operator")
+                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.tooltip.description"),
+                TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.registry.operator")
+                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.registry.description")
+        );
+
+        this.drawHoveringText(tooltip, mouseX, mouseY);
     }
 
     @Override
@@ -162,6 +180,7 @@ public abstract class GuiChiselMixin extends GuiContainer {
     private void capnschiselsearch$highlightMatchingSlot(Slot slot, CallbackInfo ci) {
         capnschiselsearch$drawSearchOverlay(slot);
     }
+
     private boolean capnschiselsearch$isCtrlDown() {
         return Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
     }
@@ -219,22 +238,63 @@ public abstract class GuiChiselMixin extends GuiContainer {
             return true;
         }
 
-        return capnschiselsearch$getSearchableText(stack).contains(needle);
+        char operator = needle.charAt(0);
+
+        if (operator == '@' || operator == '#' || operator == '&') {
+            String operatorNeedle = needle.substring(1).trim();
+
+            if (operatorNeedle.isEmpty()) {
+                return true;
+            }
+
+            switch (operator) {
+                case '@':
+                    return capnschiselsearch$getModSearchText(stack).contains(operatorNeedle);
+
+                case '#':
+                    return capnschiselsearch$getFullTooltipSearchText(stack).contains(operatorNeedle);
+
+                case '&':
+                    return capnschiselsearch$getRegistrySearchText(stack).contains(operatorNeedle);
+
+                default:
+                    return false;
+            }
+        }
+
+        return capnschiselsearch$getDefaultSearchText(stack).contains(needle);
     }
 
-    private String capnschiselsearch$getSearchableText(ItemStack stack) {
-        StringBuilder builder = new StringBuilder(128);
+    private String capnschiselsearch$getDefaultSearchText(ItemStack stack) {
+        StringBuilder builder = new StringBuilder(96);
 
         capnschiselsearch$appendSearchPart(builder, stack.getDisplayName());
-        capnschiselsearch$appendNormalTooltip(builder, stack);
-        capnschiselsearch$appendDynamicMachine(builder, stack);
+        capnschiselsearch$appendSecondTooltipLine(builder, stack);
 
         return builder.toString().toLowerCase(Locale.ROOT);
     }
 
-    private void capnschiselsearch$appendNormalTooltip(StringBuilder builder, ItemStack stack) {
+    private void capnschiselsearch$appendSecondTooltipLine(StringBuilder builder, ItemStack stack) {
         if (this.mc == null || this.mc.player == null || stack == null || stack.isEmpty()) {
             return;
+        }
+
+        try {
+            List<String> tooltip = stack.getTooltip(this.mc.player, ITooltipFlag.TooltipFlags.NORMAL);
+
+            if (tooltip.size() > 1) {
+                capnschiselsearch$appendSearchPart(builder, tooltip.get(1));
+            }
+        } catch (Throwable ignored) {
+            // Search should never crash the Chisel GUI because of a tooltip edge case.
+        }
+    }
+
+    private String capnschiselsearch$getFullTooltipSearchText(ItemStack stack) {
+        StringBuilder builder = new StringBuilder(128);
+
+        if (this.mc == null || this.mc.player == null || stack == null || stack.isEmpty()) {
+            return "";
         }
 
         try {
@@ -244,18 +304,42 @@ public abstract class GuiChiselMixin extends GuiContainer {
                 capnschiselsearch$appendSearchPart(builder, line);
             }
         } catch (Throwable ignored) {
-            // Search should never crash the Chisel GUI because of a tooltip edge case.
+            // Tooltip search is optional and must never crash the GUI.
         }
+
+        return builder.toString().toLowerCase(Locale.ROOT);
     }
 
-    private void capnschiselsearch$appendDynamicMachine(StringBuilder builder, ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTagCompound() || stack.getTagCompound() == null) {
-            return;
+    private String capnschiselsearch$getModSearchText(ItemStack stack) {
+        StringBuilder builder = new StringBuilder(64);
+
+        ResourceLocation registryName = stack.getItem().getRegistryName();
+
+        if (registryName == null) {
+            return "";
         }
 
-        if (stack.getTagCompound().hasKey("dynamicmachine")) {
-            capnschiselsearch$appendSearchPart(builder, stack.getTagCompound().getString("dynamicmachine"));
+        String modid = registryName.getResourceDomain();
+
+        capnschiselsearch$appendSearchPart(builder, modid);
+
+        ModContainer modContainer = Loader.instance().getIndexedModList().get(modid);
+
+        if (modContainer != null) {
+            capnschiselsearch$appendSearchPart(builder, modContainer.getName());
         }
+
+        return builder.toString().toLowerCase(Locale.ROOT);
+    }
+
+    private String capnschiselsearch$getRegistrySearchText(ItemStack stack) {
+        ResourceLocation registryName = stack.getItem().getRegistryName();
+
+        if (registryName == null) {
+            return "";
+        }
+
+        return registryName.toString().toLowerCase(Locale.ROOT);
     }
 
     private void capnschiselsearch$appendSearchPart(StringBuilder builder, String value) {
