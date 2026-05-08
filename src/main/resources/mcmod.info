@@ -1,0 +1,17 @@
+[
+  {
+    "modid": "capnschiselsearch",
+    "name": "Capn's Chisel Search",
+    "description": "Client-side search for the Chisel variant selection GUI.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": [
+      "kaduvill"
+    ],
+    "dependencies": [
+      "mixinbooter",
+      "chisel"
+    ]
+  }
+]

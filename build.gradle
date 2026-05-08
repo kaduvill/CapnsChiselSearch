@@ -1,0 +1,151 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'eclipse'
+    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.3'
+    id 'com.gtnewhorizons.retrofuturagradle' version '2.0.2'
+}
+
+group = 'com.kaduvill.capnschiselsearch'
+version = '1.12.2-0.2.0'
+
+if (System.getenv('BUILD_NUMBER') != null) {
+    version = "${version}.${System.getenv('BUILD_NUMBER')}"
+}
+
+base {
+    archivesName.set('CapnsChiselSearch')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+    options.release.set(8)
+
+    javaCompiler.set(javaToolchains.compilerFor {
+        languageVersion.set(JavaLanguageVersion.of(17))
+        vendor.set(JvmVendorSpec.AZUL)
+    })
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+        vendor = JvmVendorSpec.AZUL
+    }
+
+    withSourcesJar()
+}
+
+minecraft {
+    mcVersion.set('1.12.2')
+
+    // Same mapping style as your XNetAdditions project.
+    mcpMappingChannel.set('snapshot')
+    mcpMappingVersion.set('20180616')
+
+    useDependencyAccessTransformers.set(true)
+    username.set('Developer')
+
+    extraRunJvmArguments.add("-ea:${project.group}")
+    extraRunJvmArguments.add('-Dmixin.hotSwap=true')
+    extraRunJvmArguments.add('-Dmixin.checks.interfaces=true')
+    extraRunJvmArguments.add('-Dmixin.debug.export=true')
+
+    tagReplacementFiles.add('CapnsChiselSearch.java')
+    injectedTags.put('GRADLETOKEN_VERSION', project.version.toString())
+}
+
+repositories {
+    mavenCentral()
+
+    maven {
+        name = 'Curse Maven'
+        url = uri('https://cursemaven.com')
+    }
+
+    maven {
+        name = 'CleanroomMC'
+        url = uri('https://maven.cleanroommc.com')
+    }
+
+    maven {
+        name = 'GTNH Maven'
+        url = uri('https://nexus.gtnewhorizons.com/repository/public/')
+    }
+
+    maven {
+        name = 'Sponge'
+        url = uri('https://repo.spongepowered.org/maven')
+    }
+
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    /*
+     * MixinBooter setup for RFG.
+     *
+     * This replaces the old ForgeGradle:
+     * mixin { add sourceSets.main, "whatever.refmap.json" }
+     *
+     * MixinBooter is the correct dependency for 1.12.2 mod mixins.
+     */
+    String mixinBooter = modUtils.enableMixins(
+            'zone.rong:mixinbooter:10.7',
+            'capnschiselsearch.refmap.json'
+    )
+
+    api(mixinBooter) {
+        transitive = false
+    }
+
+    annotationProcessor 'org.ow2.asm:asm-debug-all:5.2'
+    annotationProcessor 'com.google.guava:guava:32.1.2-jre'
+    annotationProcessor 'com.google.code.gson:gson:2.8.9'
+
+    annotationProcessor(mixinBooter) {
+        transitive = false
+    }
+
+    /*
+     * Chisel + CTM.
+     *
+     * Chisel needs CTM in dev/runtime.
+     * Curse Maven does not always reliably pull required runtime deps for old mods,
+     * so include CTM explicitly.
+     */
+    implementation rfg.deobf('curse.maven:chisel-235279:2915375')
+    implementation rfg.deobf('curse.maven:ctm-267602:2915363')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', minecraft.mcVersion.get()
+
+    filesMatching('mcmod.info') { fcd ->
+        fcd.expand(
+                'version': project.version,
+                'mcversion': minecraft.mcVersion.get()
+        )
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+        inheritOutputDirs = true
+    }
+}
