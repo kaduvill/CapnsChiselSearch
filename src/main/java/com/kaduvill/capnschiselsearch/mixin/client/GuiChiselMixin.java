@@ -1,6 +1,7 @@
 package com.kaduvill.capnschiselsearch.mixin.client;
 
 import java.util.Locale;
+import java.io.IOException;
 
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -68,13 +69,6 @@ public abstract class GuiChiselMixin extends GuiContainer {
         }
     }
 
-    @Inject(method = "updateScreen", at = @At("TAIL"), remap = true)
-    private void capnschiselsearch$updateScreen(CallbackInfo ci) {
-        if (this.capnschiselsearch$searchField != null) {
-            this.capnschiselsearch$searchField.updateCursorCounter();
-        }
-    }
-
     @Inject(method = "drawScreen", at = @At("TAIL"), remap = true)
     private void capnschiselsearch$drawScreen(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
         if (this.capnschiselsearch$searchField == null) {
@@ -93,42 +87,46 @@ public abstract class GuiChiselMixin extends GuiContainer {
         }
     }
 
-    @Inject(method = "keyTyped", at = @At("HEAD"), cancellable = true, remap = true)
-    private void capnschiselsearch$keyTyped(char typedChar, int keyCode, CallbackInfo ci) {
-        if (this.capnschiselsearch$searchField == null) {
-            return;
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+
+        if (this.capnschiselsearch$searchField != null) {
+            this.capnschiselsearch$searchField.updateCursorCounter();
         }
+    }
 
-        if (keyCode == Keyboard.KEY_F && capnschiselsearch$isCtrlDown()) {
-            this.capnschiselsearch$searchField.setFocused(true);
-            ci.cancel();
-            return;
-        }
-
-        if (!this.capnschiselsearch$searchField.isFocused()) {
-            return;
-        }
-
-        if (keyCode == Keyboard.KEY_ESCAPE) {
-            this.capnschiselsearch$searchField.setFocused(false);
-            ci.cancel();
-            return;
-        }
-
-        String before = this.capnschiselsearch$searchField.getText();
-
-        if (this.capnschiselsearch$searchField.textboxKeyTyped(typedChar, keyCode)) {
-            String after = this.capnschiselsearch$searchField.getText();
-
-            if (!before.equals(after)) {
-                capnschiselsearch$lastSearchText = after;
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (this.capnschiselsearch$searchField != null) {
+            if (keyCode == Keyboard.KEY_F && capnschiselsearch$isCtrlDown()) {
+                this.capnschiselsearch$searchField.setFocused(true);
+                return;
             }
 
-            ci.cancel();
-            return;
+            if (this.capnschiselsearch$searchField.isFocused()) {
+                if (keyCode == Keyboard.KEY_ESCAPE) {
+                    this.capnschiselsearch$searchField.setFocused(false);
+                    return;
+                }
+
+                String before = this.capnschiselsearch$searchField.getText();
+
+                if (this.capnschiselsearch$searchField.textboxKeyTyped(typedChar, keyCode)) {
+                    String after = this.capnschiselsearch$searchField.getText();
+
+                    if (!before.equals(after)) {
+                        capnschiselsearch$lastSearchText = after;
+                    }
+
+                    return;
+                }
+
+                return;
+            }
         }
 
-        ci.cancel();
+        super.keyTyped(typedChar, keyCode);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, remap = true)
