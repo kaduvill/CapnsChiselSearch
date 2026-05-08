@@ -2,13 +2,16 @@ package com.kaduvill.capnschiselsearch.mixin.client;
 
 import java.util.Locale;
 import java.io.IOException;
+import java.util.List;
 
+import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.TextFormatting;
 
 import org.lwjgl.input.Keyboard;
 
@@ -209,21 +212,57 @@ public abstract class GuiChiselMixin extends GuiContainer {
             return true;
         }
 
-        ResourceLocation registryName = stack.getItem().getRegistryName();
+        return capnschiselsearch$getSearchableText(stack).contains(needle);
+    }
 
-        String registry = registryName == null ? "" : registryName.toString();
-        String modid = registryName == null ? "" : registryName.getResourceDomain();
-        String path = registryName == null ? "" : registryName.getResourcePath();
+    private String capnschiselsearch$getSearchableText(ItemStack stack) {
+        StringBuilder builder = new StringBuilder(128);
 
-        String haystack = (
-                stack.getDisplayName() + " " +
-                        stack.getItem().getUnlocalizedName(stack) + " " +
-                        registry + " " +
-                        modid + " " +
-                        path
-        ).toLowerCase(Locale.ROOT);
+        capnschiselsearch$appendSearchPart(builder, stack.getDisplayName());
+        capnschiselsearch$appendNormalTooltip(builder, stack);
+        capnschiselsearch$appendDynamicMachine(builder, stack);
 
-        return haystack.contains(needle);
+        return builder.toString().toLowerCase(Locale.ROOT);
+    }
+
+    private void capnschiselsearch$appendNormalTooltip(StringBuilder builder, ItemStack stack) {
+        if (this.mc == null || this.mc.player == null || stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        try {
+            List<String> tooltip = stack.getTooltip(this.mc.player, ITooltipFlag.TooltipFlags.NORMAL);
+
+            for (String line : tooltip) {
+                capnschiselsearch$appendSearchPart(builder, line);
+            }
+        } catch (Throwable ignored) {
+            // Search should never crash the Chisel GUI because of a tooltip edge case.
+        }
+    }
+
+    private void capnschiselsearch$appendDynamicMachine(StringBuilder builder, ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !stack.hasTagCompound() || stack.getTagCompound() == null) {
+            return;
+        }
+
+        if (stack.getTagCompound().hasKey("dynamicmachine")) {
+            capnschiselsearch$appendSearchPart(builder, stack.getTagCompound().getString("dynamicmachine"));
+        }
+    }
+
+    private void capnschiselsearch$appendSearchPart(StringBuilder builder, String value) {
+        if (value == null || value.isEmpty()) {
+            return;
+        }
+
+        String cleanValue = TextFormatting.getTextWithoutFormattingCodes(value);
+
+        if (cleanValue == null || cleanValue.isEmpty()) {
+            return;
+        }
+
+        builder.append(' ').append(cleanValue);
     }
 
     private String capnschiselsearch$getNeedle() {
