@@ -7,7 +7,7 @@
   "target": "@env(DEFAULT)",
   "mixins": [],
   "client": [
-    "GuiChiselMixin"
+    "client.GuiChiselMixin"
   ],
   "server": []
 }
