@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_8",
   "required": true,
   "target": "@env(DEFAULT)",
-  "mixins": [],
+  "mixins": [
+    "common.InventoryChiselSelectionMixin"
+  ],
   "client": [
     "client.GuiChiselMixin"
   ],

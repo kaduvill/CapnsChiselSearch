@@ -9,3 +9,4 @@ gui.capnschiselsearch.tooltip.tooltip.operator=#text
 gui.capnschiselsearch.tooltip.tooltip.description= - full tooltip
 gui.capnschiselsearch.tooltip.registry.operator=&id
 gui.capnschiselsearch.tooltip.registry.description= - registry id
+gui.capnschiselsearch.tooltip.scroll=Mouse wheel - scroll search results

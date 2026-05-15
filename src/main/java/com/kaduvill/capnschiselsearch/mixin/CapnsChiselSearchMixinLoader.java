@@ -19,8 +19,7 @@ public class CapnsChiselSearchMixinLoader implements ILateMixinLoader {
 
     @Override
     public boolean shouldMixinConfigQueue(String mixinConfig) {
-        boolean shouldQueue = FMLLaunchHandler.side().isClient()
-                && Loader.isModLoaded("chisel")
+        boolean shouldQueue = Loader.isModLoaded("chisel")
                 && CapnsChiselSearchConfig.enableChiselGuiSearch;
 
         if (shouldQueue) {

@@ -11,4 +11,21 @@ public class CapnsChiselSearchConfig {
             "Client-side only."
     })
     public static boolean enableChiselGuiSearch = true;
+
+    @Config.Name("Enable Search Compaction")
+    @Config.Comment({
+            "When enabled, searches can compact matching Chisel variants into the visible slots.",
+            "This changes the real Chisel selection inventory and requires this mod on the server in multiplayer.",
+            "Keep disabled for client-only use."
+    })
+    public static boolean enableSearchCompaction = true;
+
+    @Config.Name("Max Search Results")
+    @Config.Comment({
+            "This does not increase the number of visible GUI slots.",
+            "Higher values allow larger virtual result lists but cost more CPU while searching.",
+            "Default: 4096"
+    })
+    @Config.RangeInt(min = 63, max = 32767)
+    public static int maxSearchResults = 4096;
 }

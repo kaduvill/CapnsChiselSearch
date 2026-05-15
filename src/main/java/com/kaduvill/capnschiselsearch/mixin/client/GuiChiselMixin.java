@@ -16,7 +16,10 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.ModContainer;
-
+import com.kaduvill.capnschiselsearch.CapnsChiselSearch;
+import com.kaduvill.capnschiselsearch.CapnsChiselSearchConfig;
+import com.kaduvill.capnschiselsearch.network.PacketChiselSearchQuery;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.input.Keyboard;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,6 +37,7 @@ public abstract class GuiChiselMixin extends GuiContainer {
     private static final int SEARCH_FIELD_HEIGHT = 12;
 
     private String capnschiselsearch$lastSearchText = "";
+    private String capnschiselsearch$lastSentCompactionQuery = "";
 
     @Shadow(remap = false)
     public ContainerChisel container;
@@ -70,6 +74,10 @@ public abstract class GuiChiselMixin extends GuiContainer {
     @Inject(method = "onGuiClosed", at = @At("HEAD"), remap = true)
     private void capnschiselsearch$onGuiClosed(CallbackInfo ci) {
         Keyboard.enableRepeatEvents(false);
+
+        if (CapnsChiselSearchConfig.enableSearchCompaction) {
+            CapnsChiselSearch.NETWORK.sendToServer(new PacketChiselSearchQuery(""));
+        }
     }
 
     @Inject(method = "drawScreen", at = @At("TAIL"), remap = true)
@@ -102,7 +110,8 @@ public abstract class GuiChiselMixin extends GuiContainer {
                 TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.tooltip.operator")
                         + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.tooltip.description"),
                 TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.registry.operator")
-                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.registry.description")
+                        + TextFormatting.DARK_GRAY + I18n.format("gui.capnschiselsearch.tooltip.registry.description"),
+                TextFormatting.GRAY + I18n.format("gui.capnschiselsearch.tooltip.scroll")
         );
 
         this.drawHoveringText(tooltip, mouseX, mouseY);
@@ -115,6 +124,78 @@ public abstract class GuiChiselMixin extends GuiContainer {
         if (this.capnschiselsearch$searchField != null) {
             this.capnschiselsearch$searchField.updateCursorCounter();
         }
+    }
+    @Override
+    public void handleMouseInput() throws IOException {
+        int wheel = Mouse.getEventDWheel();
+
+        if (wheel != 0 && capnschiselsearch$canSendCompactionScroll()) {
+            int mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
+            int mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
+
+            if (capnschiselsearch$isMouseOverSelectionArea(mouseX, mouseY)
+                    || capnschiselsearch$isMouseOverSearchField(mouseX, mouseY)) {
+                int rowSize = capnschiselsearch$getVisibleSelectionColumns();
+                int delta = wheel < 0 ? rowSize : -rowSize;
+
+                CapnsChiselSearch.NETWORK.sendToServer(PacketChiselSearchQuery.scroll(delta));
+                return;
+            }
+        }
+
+        super.handleMouseInput();
+    }
+
+    private boolean capnschiselsearch$canSendCompactionScroll() {
+        return CapnsChiselSearchConfig.enableSearchCompaction;
+    }
+
+    private boolean capnschiselsearch$isMouseOverSelectionArea(int mouseX, int mouseY) {
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (Slot slot : this.inventorySlots.inventorySlots) {
+            if (!capnschiselsearch$isSelectionSlot(slot)) {
+                continue;
+            }
+
+            minX = Math.min(minX, slot.xPos);
+            minY = Math.min(minY, slot.yPos);
+            maxX = Math.max(maxX, slot.xPos + 16);
+            maxY = Math.max(maxY, slot.yPos + 16);
+        }
+
+        if (minX == Integer.MAX_VALUE) {
+            return false;
+        }
+
+        return mouseX >= this.guiLeft + minX
+                && mouseX < this.guiLeft + maxX
+                && mouseY >= this.guiTop + minY
+                && mouseY < this.guiTop + maxY;
+    }
+
+    private int capnschiselsearch$getVisibleSelectionColumns() {
+        Integer firstY = null;
+        int columns = 0;
+
+        for (Slot slot : this.inventorySlots.inventorySlots) {
+            if (!capnschiselsearch$isSelectionSlot(slot)) {
+                continue;
+            }
+
+            if (firstY == null) {
+                firstY = slot.yPos;
+            }
+
+            if (slot.yPos == firstY) {
+                columns++;
+            }
+        }
+
+        return columns > 0 ? columns : 9;
     }
 
     @Override
@@ -137,7 +218,7 @@ public abstract class GuiChiselMixin extends GuiContainer {
                     String after = this.capnschiselsearch$searchField.getText();
 
                     if (!before.equals(after)) {
-                        capnschiselsearch$lastSearchText = after;
+                        capnschiselsearch$onSearchTextChanged(after);
                     }
 
                     return;
@@ -221,6 +302,10 @@ public abstract class GuiChiselMixin extends GuiContainer {
     }
 
     private boolean capnschiselsearch$isFilteredOut(Slot slot) {
+        if (CapnsChiselSearchConfig.enableSearchCompaction) {
+            return false;
+        }
+
         return capnschiselsearch$isSelectionSlot(slot)
                 && !capnschiselsearch$getNeedle().isEmpty()
                 && slot.getHasStack()
@@ -375,7 +460,7 @@ public abstract class GuiChiselMixin extends GuiContainer {
             return;
         }
 
-        if (!capnschiselsearch$matchesSearch(slot.getStack())) {
+        if (!capnschiselsearch$isServerCompactionQuery() && !capnschiselsearch$matchesSearch(slot.getStack())) {
             return;
         }
 
@@ -398,5 +483,37 @@ public abstract class GuiChiselMixin extends GuiContainer {
         }
 
         super.renderToolTip(stack, x, y);
+    }
+
+    private void capnschiselsearch$onSearchTextChanged(String searchText) {
+        capnschiselsearch$lastSearchText = searchText == null ? "" : searchText;
+
+        if (!CapnsChiselSearchConfig.enableSearchCompaction) {
+            return;
+        }
+
+        String query = capnschiselsearch$getNeedle();
+
+        if (query.equals(this.capnschiselsearch$lastSentCompactionQuery)) {
+            return;
+        }
+
+        this.capnschiselsearch$lastSentCompactionQuery = query;
+        CapnsChiselSearch.NETWORK.sendToServer(new PacketChiselSearchQuery(query));
+    }
+
+    private boolean capnschiselsearch$isServerCompactionQuery() {
+        if (!CapnsChiselSearchConfig.enableSearchCompaction) {
+            return false;
+        }
+
+        String needle = capnschiselsearch$getNeedle();
+
+        if (needle.isEmpty()) {
+            return false;
+        }
+
+        // Full tooltip search is client-only. Do not send # searches to server compaction.
+        return needle.charAt(0) != '#';
     }
 }
