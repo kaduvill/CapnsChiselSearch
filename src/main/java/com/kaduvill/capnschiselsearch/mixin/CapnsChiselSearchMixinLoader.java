@@ -1,7 +1,6 @@
 package com.kaduvill.capnschiselsearch.mixin;
 
 import com.kaduvill.capnschiselsearch.CapnsChiselSearch;
-import com.kaduvill.capnschiselsearch.CapnsChiselSearchConfig;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.relauncher.FMLLaunchHandler;
 import zone.rong.mixinbooter.ILateMixinLoader;
@@ -20,8 +19,7 @@ public class CapnsChiselSearchMixinLoader implements ILateMixinLoader {
     @Override
     public boolean shouldMixinConfigQueue(String mixinConfig) {
         boolean shouldQueue = FMLLaunchHandler.side().isClient()
-                && Loader.isModLoaded("chisel")
-                && CapnsChiselSearchConfig.enableChiselGuiSearch;
+                && Loader.isModLoaded("chisel");
 
         if (shouldQueue) {
             CapnsChiselSearch.LOGGER.info("Queueing mixin config: {}", mixinConfig);
