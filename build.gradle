@@ -41,7 +41,6 @@ java {
 minecraft {
     mcVersion.set('1.12.2')
 
-    // Same mapping style as your XNetAdditions project.
     mcpMappingChannel.set('snapshot')
     mcpMappingVersion.set('20180616')
 
@@ -86,14 +85,6 @@ repositories {
 }
 
 dependencies {
-    /*
-     * MixinBooter setup for RFG.
-     *
-     * This replaces the old ForgeGradle:
-     * mixin { add sourceSets.main, "whatever.refmap.json" }
-     *
-     * MixinBooter is the correct dependency for 1.12.2 mod mixins.
-     */
     String mixinBooter = modUtils.enableMixins(
             'zone.rong:mixinbooter:10.7',
             'capnschiselsearch.refmap.json'
@@ -111,13 +102,7 @@ dependencies {
         transitive = false
     }
 
-    /*
-     * Chisel + CTM.
-     *
-     * Chisel needs CTM in dev/runtime.
-     * Curse Maven does not always reliably pull required runtime deps for old mods,
-     * so include CTM explicitly.
-     */
+    //Chisel + CTM.
     implementation rfg.deobf('curse.maven:chisel-235279:2915375')
     implementation rfg.deobf('curse.maven:ctm-267602:2915363')
 }
