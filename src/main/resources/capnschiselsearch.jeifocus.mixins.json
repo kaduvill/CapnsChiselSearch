@@ -1,0 +1,13 @@
+{
+  "package": "com.kaduvill.capnschiselsearch.mixin",
+  "refmap": "capnschiselsearch.refmap.json",
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_8",
+  "required": true,
+  "target": "@env(DEFAULT)",
+  "mixins": [],
+  "client": [
+    "client.ChiselRecipeCategoryFocusMixin"
+  ],
+  "server": []
+}

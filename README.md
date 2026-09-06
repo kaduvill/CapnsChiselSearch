@@ -1,7 +1,13 @@
 # Chisel Searching
 
-this mods 1 purpose:
+Small client-side Chisel addon that adds:
 
-Add searchbar to chisel tool
+- A search bar to the Chisel GUI
+- An optional iChisel fix for NBT-distinct variants
+- An optional fix for Chisel recipes breaking after clicking HEI bookmarks
 
-Requires [Chisel](https://www.curseforge.com/minecraft/mc-mods/chisel) and [MixinBooter](https://www.curseforge.com/minecraft/mc-mods/mixin-booter).
+Optional fixes can be disabled in the config and are fully skipped from mixin loading when disabled.
+
+Requires Chisel and MixinBooter.
+
+Client-side only.

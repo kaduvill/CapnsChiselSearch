@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.kaduvill.capnschiselsearch'
-version = '1.12.2-0.4.0'
+version = '1.12.2-0.5.0'
 
 if (System.getenv('BUILD_NUMBER') != null) {
     version = "${version}.${System.getenv('BUILD_NUMBER')}"
@@ -105,6 +105,7 @@ dependencies {
     //Chisel + CTM.
     implementation rfg.deobf('curse.maven:chisel-235279:2915375')
     implementation rfg.deobf('curse.maven:ctm-267602:2915363')
+    compileOnly 'mezz:jei:4.31.2'
 }
 
 processResources {
